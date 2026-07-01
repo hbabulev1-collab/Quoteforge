@@ -17,7 +17,7 @@ const i18n = {
     leadTime: 'Срок на доставка', contact: 'Контакт за връзка',
     quoteTitle: 'ОФЕРТА', totalPrice: 'Обща цена', save: 'Запази в история',
     saved: 'Запазено ✓', copyText: 'Копирай като текст', copyDone: 'Копирано ✓',
-    downloadTxt: 'Изтегли .txt',
+    downloadTxt: 'Изтегли PDF',
     noHistory: 'Все още няма запазени оферти.', noClients: 'Все още няма запазени клиенти.',
     delete: 'Изтрий', load: 'Отвори', parts: 'детайли', total: 'Сума',
     clientName: 'Име на клиента', clientContact: 'Контакт', clientCountry: 'Държава',
@@ -34,7 +34,7 @@ const i18n = {
     leadTime: 'Lead time', contact: 'Contact',
     quoteTitle: 'QUOTATION', totalPrice: 'Total Price', save: 'Save to history',
     saved: 'Saved ✓', copyText: 'Copy as text', copyDone: 'Copied ✓',
-    downloadTxt: 'Download .txt',
+    downloadTxt: 'Download PDF',
     noHistory: 'No saved quotes yet.', noClients: 'No saved clients yet.',
     delete: 'Delete', load: 'Open', parts: 'parts', total: 'Total',
     clientName: 'Client name', clientContact: 'Contact', clientCountry: 'Country',
@@ -308,14 +308,43 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     });
   }
 
-  function downloadAsTextFile() {
-    const blob = new Blob([buildQuoteText()], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `quote_${(parts[0].partName || 'quote').replace(/[^a-zA-Z0-9]/g, '_')}_${lang}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function downloadAsPDF() {
+    try {
+      const res = await fetch('/api/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company,
+          clientName: selectedClient?.name || null,
+          leadTime,
+          contact,
+          parts: parts.map((p, i) => ({
+            partName: p.partName,
+            materialName: getMaterialName(p.materialId),
+            qty: p.qty,
+            total: partTotals[i].total,
+          })),
+          grandTotal,
+          lang,
+          date: new Date().toLocaleDateString(lang === 'bg' ? 'bg-BG' : 'en-GB', {
+            day: '2-digit', month: 'long', year: 'numeric',
+          }),
+        }),
+      });
+
+      if (!res.ok) throw new Error('PDF failed');
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quote_${(company || 'quote').replace(/[^a-zA-Z0-9]/g, '_')}_${lang}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('PDF error:', e);
+      alert(lang === 'bg' ? 'Грешка при генериране на PDF' : 'PDF generation failed');
+    }
   }
 
   const colors = {
@@ -553,7 +582,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
                 <button onClick={copyAsText} style={{ ...actionBtnStyle(colors), background: copyStatus === 'done' ? colors.ok : colors.graphite }}>
                   {copyStatus === 'done' ? t.copyDone : t.copyText}
                 </button>
-                <button onClick={downloadAsTextFile} style={{ ...actionBtnStyle(colors), background: colors.sparkDim }}>
+                <button onClick={downloadAsPDF} style={{ ...actionBtnStyle(colors), background: colors.sparkDim }}>
                   {t.downloadTxt}
                 </button>
               </div>
