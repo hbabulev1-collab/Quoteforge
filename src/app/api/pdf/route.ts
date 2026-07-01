@@ -2,14 +2,12 @@ import { NextResponse } from 'next/server';
 import { renderToBuffer, Font } from '@react-pdf/renderer';
 import { createElement } from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import path from 'path';
+import { PTSANS_BASE64 } from '@/fonts/PTSans-Regular';
 
-// Register PT Sans with full Cyrillic support from local file
-const fontPath = path.join(process.cwd(), 'src', 'fonts', 'PTSans-Regular.ttf');
-
+// Register PT Sans with full Cyrillic support from embedded base64
 Font.register({
   family: 'PTSans',
-  src: fontPath,
+  src: `data:font/truetype;base64,${PTSANS_BASE64}`,
 });
 
 // Disable font hyphenation
