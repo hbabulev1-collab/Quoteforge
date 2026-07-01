@@ -2,20 +2,14 @@ import { NextResponse } from 'next/server';
 import { renderToBuffer, Font } from '@react-pdf/renderer';
 import { createElement } from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import path from 'path';
 
-// Register Noto Sans with Cyrillic support
+// Register PT Sans with full Cyrillic support from local file
+const fontPath = path.join(process.cwd(), 'src', 'fonts', 'PTSans-Regular.ttf');
+
 Font.register({
-  family: 'NotoSans',
-  fonts: [
-    {
-      src: 'https://fonts.gstatic.com/s/notosans/v36/o-0IIpQlx3QUlC5A4PNr5TRA.woff2',
-      fontWeight: 'normal',
-    },
-    {
-      src: 'https://fonts.gstatic.com/s/notosans/v36/o-0NIpQlx3QUlC5A4PNjXhFVadyB1Wk.woff2',
-      fontWeight: 'bold',
-    },
-  ],
+  family: 'PTSans',
+  src: fontPath,
 });
 
 // Disable font hyphenation
@@ -23,7 +17,7 @@ Font.registerHyphenationCallback(word => [word]);
 
 const styles = StyleSheet.create({
   page: {
-    fontFamily: 'NotoSans',
+    fontFamily: 'PTSans',
     fontSize: 10,
     padding: 40,
     backgroundColor: '#FAFBFC',
@@ -45,7 +39,7 @@ const styles = StyleSheet.create({
   },
   brandName: {
     fontSize: 22,
-    fontFamily: 'NotoSans', fontWeight: 'bold',
+    fontFamily: 'PTSans', fontWeight: 'bold',
     color: '#FF6B1A',
     letterSpacing: 1,
   },
@@ -60,7 +54,7 @@ const styles = StyleSheet.create({
   },
   docTitle: {
     fontSize: 14,
-    fontFamily: 'NotoSans', fontWeight: 'bold',
+    fontFamily: 'PTSans', fontWeight: 'bold',
     color: '#FAF8F4',
     letterSpacing: 2,
   },
@@ -89,7 +83,7 @@ const styles = StyleSheet.create({
   },
   fromName: {
     fontSize: 13,
-    fontFamily: 'NotoSans', fontWeight: 'bold',
+    fontFamily: 'PTSans', fontWeight: 'bold',
     color: '#1F2421',
   },
   fromSub: {
@@ -106,7 +100,7 @@ const styles = StyleSheet.create({
   },
   tableHeaderText: {
     fontSize: 8,
-    fontFamily: 'NotoSans', fontWeight: 'bold',
+    fontFamily: 'PTSans', fontWeight: 'bold',
     color: '#5A5F5A',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -135,7 +129,7 @@ const styles = StyleSheet.create({
   },
   priceText: {
     fontSize: 9,
-    fontFamily: 'NotoSans', fontWeight: 'bold',
+    fontFamily: 'PTSans', fontWeight: 'bold',
     color: '#C9551A',
     textAlign: 'right',
   },
@@ -151,14 +145,14 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 11,
-    fontFamily: 'NotoSans', fontWeight: 'bold',
+    fontFamily: 'PTSans', fontWeight: 'bold',
     textTransform: 'uppercase',
     letterSpacing: 1,
     color: '#1F2421',
   },
   totalAmount: {
     fontSize: 22,
-    fontFamily: 'NotoSans', fontWeight: 'bold',
+    fontFamily: 'PTSans', fontWeight: 'bold',
     color: '#C9551A',
   },
   // Details row
@@ -182,7 +176,7 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: 9,
     color: '#1F2421',
-    fontFamily: 'NotoSans', fontWeight: 'bold',
+    fontFamily: 'PTSans', fontWeight: 'bold',
   },
   // Footer
   footer: {
