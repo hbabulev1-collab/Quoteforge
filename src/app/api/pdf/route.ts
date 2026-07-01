@@ -2,13 +2,28 @@ import { NextResponse } from 'next/server';
 import { renderToBuffer, Font } from '@react-pdf/renderer';
 import { createElement } from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import { PTSANS_BASE64 } from '@/fonts/PTSans-Regular';
+import fs from 'fs';
+import path from 'path';
 
-// Register PT Sans with full Cyrillic support from embedded base64
-Font.register({
-  family: 'PTSans',
-  src: `data:font/truetype;base64,${PTSANS_BASE64}`,
-});
+// Load font from public directory - most reliable approach on Vercel
+let fontRegistered = false;
+
+function registerFont() {
+  if (fontRegistered) return;
+  try {
+    const fontPath = path.join(process.cwd(), 'public', 'fonts', 'PTSans-Regular.ttf');
+    const fontBuffer = fs.readFileSync(fontPath);
+    const base64 = fontBuffer.toString('base64');
+    Font.register({
+      family: 'PTSans',
+      src: `data:font/truetype;base64,${base64}`,
+    });
+    fontRegistered = true;
+  } catch (e) {
+    // Fallback to Helvetica if font loading fails
+    console.error('Font loading failed:', e);
+  }
+}
 
 // Disable font hyphenation
 Font.registerHyphenationCallback(word => [word]);
@@ -353,6 +368,7 @@ function QuotePDF({ data }: { data: PDFData }) {
 
 export async function POST(request: Request) {
   try {
+    registerFont();
     const data: PDFData = await request.json();
 
     const buffer = await renderToBuffer(createElement(QuotePDF, { data }) as any);
