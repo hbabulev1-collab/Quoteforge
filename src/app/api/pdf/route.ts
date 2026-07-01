@@ -2,30 +2,21 @@ import { NextResponse } from 'next/server';
 import { renderToBuffer, Font } from '@react-pdf/renderer';
 import { createElement } from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import fs from 'fs';
-import path from 'path';
 
-// Load font from public directory - most reliable approach on Vercel
+// PT Sans font embedded as base64 - works on any environment including Vercel
+// Generated from PTSans-Regular.ttf which supports full Cyrillic + Latin
+import { PTSANS_BASE64 } from '@/fonts/PTSans-Regular';
+
 let fontRegistered = false;
-
-function registerFont() {
+function ensureFont() {
   if (fontRegistered) return;
-  try {
-    const fontPath = path.join(process.cwd(), 'public', 'fonts', 'PTSans-Regular.ttf');
-    const fontBuffer = fs.readFileSync(fontPath);
-    const base64 = fontBuffer.toString('base64');
-    Font.register({
-      family: 'PTSans',
-      src: `data:font/truetype;base64,${base64}`,
-    });
-    fontRegistered = true;
-  } catch (e) {
-    // Fallback to Helvetica if font loading fails
-    console.error('Font loading failed:', e);
-  }
+  Font.register({
+    family: 'PTSans',
+    src: `data:font/truetype;base64,${PTSANS_BASE64}`,
+  });
+  fontRegistered = true;
 }
 
-// Disable font hyphenation
 Font.registerHyphenationCallback(word => [word]);
 
 const styles = StyleSheet.create({
@@ -368,7 +359,7 @@ function QuotePDF({ data }: { data: PDFData }) {
 
 export async function POST(request: Request) {
   try {
-    registerFont();
+    ensureFont();
     const data: PDFData = await request.json();
 
     const buffer = await renderToBuffer(createElement(QuotePDF, { data }) as any);
