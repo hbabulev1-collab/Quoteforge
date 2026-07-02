@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     // Doc title
     doc.setTextColor(250, 248, 244);
     doc.setFontSize(13);
-    const title = isBg ? 'OFERТА' : 'QUOTATION';
+    const title = isBg ? '\u041e\u0424\u0415\u0420\u0422\u0410' : 'QUOTATION';
     doc.text(title, W - marginX, 18, { align: 'right' });
 
     doc.setTextColor(139, 144, 136);
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
     doc.setTextColor(90, 95, 90);
     doc.setFontSize(8);
     const note = isBg
-      ? 'Ofertata e validna 30 dni. Potrebtvardete poratchkata pishmeno.'
+      ? '\u041e\u0444\u0435\u0440\u0442\u0430\u0442\u0430 \u0435 \u0432\u0430\u043b\u0438\u0434\u043d\u0430 30 \u0434\u043d\u0438. \u041f\u043e\u0442\u0432\u044a\u0440\u0434\u0435\u0442\u0435 \u043f\u043e\u0440\u044a\u0447\u043a\u0430\u0442\u0430 \u043f\u0438\u0441\u043c\u0435\u043d\u043e.'
       : 'This quotation is valid for 30 days. Please confirm your order in writing.';
     doc.text(note, marginX + 4, y + 6);
 
@@ -198,7 +198,7 @@ export async function POST(request: Request) {
     doc.setTextColor(139, 144, 136);
     doc.setFontSize(7.5);
     const footerText = isBg
-      ? 'QUOTEFORGE \u2014 INSTRUMENT ZA PROIZVODSTVENI OFERTI'
+      ? 'QUOTEFORGE \u2014 \u0418\u041d\u0421\u0422\u0420\u0423\u041c\u0415\u041d\u0422 \u0417\u0410 \u041f\u0420\u041e\u0418\u0417\u0412\u041e\u0414\u0421\u0422\u0412\u0415\u041d\u0418 \u041e\u0424\u0415\u0420\u0422\u0418'
       : 'QUOTEFORGE \u2014 MANUFACTURING QUOTE TOOL';
     doc.text(footerText, marginX, 282);
     doc.text(`Doc: QF-${Date.now().toString(36).toUpperCase()}`, W - marginX, 282, { align: 'right' });
