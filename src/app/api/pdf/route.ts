@@ -1,231 +1,11 @@
 import { NextResponse } from 'next/server';
-import { renderToBuffer, Font } from '@react-pdf/renderer';
-import { createElement } from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-
-// PT Sans font embedded as base64 - works on any environment including Vercel
-// Generated from PTSans-Regular.ttf which supports full Cyrillic + Latin
+import { jsPDF } from 'jspdf';
 import { PTSANS_BASE64 } from '@/fonts/PTSans-Regular';
-
-let fontRegistered = false;
-function ensureFont() {
-  if (fontRegistered) return;
-  Font.register({
-    family: 'PTSans',
-    src: `data:font/truetype;base64,${PTSANS_BASE64}`,
-  });
-  fontRegistered = true;
-}
-
-Font.registerHyphenationCallback(word => [word]);
-
-const styles = StyleSheet.create({
-  page: {
-    fontFamily: 'PTSans',
-    fontSize: 10,
-    padding: 40,
-    backgroundColor: '#FAFBFC',
-    color: '#1F2421',
-  },
-  // Hazard stripe header
-  headerStripe: {
-    height: 8,
-    backgroundColor: '#FF6B1A',
-    marginBottom: 0,
-  },
-  headerBlock: {
-    backgroundColor: '#1F2421',
-    padding: '16 24',
-    marginBottom: 24,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  brandName: {
-    fontSize: 22,
-    fontFamily: 'PTSans', fontWeight: 'bold',
-    color: '#FF6B1A',
-    letterSpacing: 1,
-  },
-  brandSub: {
-    fontSize: 8,
-    color: '#8B9088',
-    marginTop: 3,
-    letterSpacing: 0.5,
-  },
-  docLabel: {
-    textAlign: 'right',
-  },
-  docTitle: {
-    fontSize: 14,
-    fontFamily: 'PTSans', fontWeight: 'bold',
-    color: '#FAF8F4',
-    letterSpacing: 2,
-  },
-  docDate: {
-    fontSize: 8,
-    color: '#8B9088',
-    marginTop: 4,
-    textAlign: 'right',
-  },
-  // From/To section
-  fromToRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#1F2421',
-  },
-  fromBlock: {},
-  fromLabel: {
-    fontSize: 8,
-    color: '#5A5F5A',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  fromName: {
-    fontSize: 13,
-    fontFamily: 'PTSans', fontWeight: 'bold',
-    color: '#1F2421',
-  },
-  fromSub: {
-    fontSize: 8,
-    color: '#5A5F5A',
-    marginTop: 2,
-  },
-  // Parts table
-  tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#E8E6E1',
-    padding: '6 8',
-    marginBottom: 0,
-  },
-  tableHeaderText: {
-    fontSize: 8,
-    fontFamily: 'PTSans', fontWeight: 'bold',
-    color: '#5A5F5A',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    padding: '8 8',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E6E1',
-  },
-  tableRowAlt: {
-    backgroundColor: '#F5F4F1',
-  },
-  colPart: { flex: 3 },
-  colMat: { flex: 2 },
-  colQty: { flex: 1 },
-  colPrice: { flex: 1.5, textAlign: 'right' },
-  cellText: {
-    fontSize: 9,
-    color: '#1F2421',
-  },
-  cellSubText: {
-    fontSize: 7.5,
-    color: '#5A5F5A',
-    marginTop: 2,
-  },
-  priceText: {
-    fontSize: 9,
-    fontFamily: 'PTSans', fontWeight: 'bold',
-    color: '#C9551A',
-    textAlign: 'right',
-  },
-  // Total section
-  totalSection: {
-    marginTop: 16,
-    paddingTop: 12,
-    borderTopWidth: 2,
-    borderTopColor: '#1F2421',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  totalLabel: {
-    fontSize: 11,
-    fontFamily: 'PTSans', fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    color: '#1F2421',
-  },
-  totalAmount: {
-    fontSize: 22,
-    fontFamily: 'PTSans', fontWeight: 'bold',
-    color: '#C9551A',
-  },
-  // Details row
-  detailsRow: {
-    flexDirection: 'row',
-    gap: 24,
-    marginTop: 16,
-    padding: '10 12',
-    backgroundColor: '#E8E6E1',
-  },
-  detailItem: {
-    flex: 1,
-  },
-  detailLabel: {
-    fontSize: 7.5,
-    color: '#5A5F5A',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 3,
-  },
-  detailValue: {
-    fontSize: 9,
-    color: '#1F2421',
-    fontFamily: 'PTSans', fontWeight: 'bold',
-  },
-  // Footer
-  footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 40,
-    right: 40,
-    borderTopWidth: 1,
-    borderTopColor: '#C7CDD4',
-    paddingTop: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  footerText: {
-    fontSize: 7.5,
-    color: '#8B9088',
-    letterSpacing: 0.3,
-  },
-  noteBox: {
-    marginTop: 16,
-    padding: '8 10',
-    borderLeftWidth: 2,
-    borderLeftColor: '#FF6B1A',
-    backgroundColor: '#FAF8F4',
-  },
-  noteText: {
-    fontSize: 8,
-    color: '#5A5F5A',
-    fontStyle: 'italic',
-  },
-});
-
-function fmt(n: number) {
-  return '€' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 interface Part {
   partName?: string;
   materialName?: string;
   qty?: string;
-  weight?: string;
-  matPrice?: string;
-  machTime?: string;
-  rate?: string;
-  margin?: number;
   total?: number;
 }
 
@@ -240,142 +20,200 @@ interface PDFData {
   date: string;
 }
 
-function QuotePDF({ data }: { data: PDFData }) {
-  const isBg = data.lang === 'bg';
-  const labels = {
-    from: isBg ? 'ОТ' : 'FROM',
-    for: isBg ? 'ЗА' : 'FOR',
-    title: isBg ? 'ОФЕРТА' : 'QUOTATION',
-    part: isBg ? 'Детайл' : 'Part',
-    material: isBg ? 'Материал' : 'Material',
-    qty: isBg ? 'Бр.' : 'Qty',
-    price: isBg ? 'Цена' : 'Price',
-    total: isBg ? 'ОБЩА ЦЕНА' : 'TOTAL PRICE',
-    leadTime: isBg ? 'Срок' : 'Lead time',
-    contact: isBg ? 'Контакт' : 'Contact',
-    note: isBg
-      ? 'Тази оферта е валидна 30 дни. Моля, потвърдете поръчката в писмена форма.'
-      : 'This quotation is valid for 30 days. Please confirm your order in writing.',
-    footer: isBg
-      ? 'QUOTEFORGE — ИНСТРУМЕНТ ЗА ПРОИЗВОДСТВЕНИ ОФЕРТИ'
-      : 'QUOTEFORGE — MANUFACTURING QUOTE TOOL',
-  };
-
-  return createElement(Document, null,
-    createElement(Page, { size: 'A4', style: styles.page },
-      // Orange stripe
-      createElement(View, { style: styles.headerStripe }),
-
-      // Dark header
-      createElement(View, { style: styles.headerBlock },
-        createElement(View, null,
-          createElement(Text, { style: styles.brandName }, 'QUOTEFORGE'),
-          createElement(Text, { style: styles.brandSub }, 'Bulgaria · Manufacturing'),
-        ),
-        createElement(View, { style: styles.docLabel },
-          createElement(Text, { style: styles.docTitle }, labels.title),
-          createElement(Text, { style: styles.docDate }, data.date),
-        ),
-      ),
-
-      // From / For
-      createElement(View, { style: styles.fromToRow },
-        createElement(View, { style: styles.fromBlock },
-          createElement(Text, { style: styles.fromLabel }, labels.from),
-          createElement(Text, { style: styles.fromName }, data.company || 'Workshop'),
-          createElement(Text, { style: styles.fromSub }, 'Bulgaria · Manufacturing'),
-        ),
-        data.clientName ? createElement(View, { style: styles.fromBlock },
-          createElement(Text, { style: { ...styles.fromLabel, textAlign: 'right' } }, labels.for),
-          createElement(Text, { style: { ...styles.fromName, textAlign: 'right' } }, data.clientName),
-        ) : null,
-      ),
-
-      // Parts table header
-      createElement(View, { style: styles.tableHeader },
-        createElement(View, { style: styles.colPart },
-          createElement(Text, { style: styles.tableHeaderText }, labels.part),
-        ),
-        createElement(View, { style: styles.colMat },
-          createElement(Text, { style: styles.tableHeaderText }, labels.material),
-        ),
-        createElement(View, { style: styles.colQty },
-          createElement(Text, { style: styles.tableHeaderText }, labels.qty),
-        ),
-        createElement(View, { style: styles.colPrice },
-          createElement(Text, { style: { ...styles.tableHeaderText, textAlign: 'right' } }, labels.price),
-        ),
-      ),
-
-      // Parts rows
-      ...data.parts.map((p, idx) =>
-        createElement(View, { key: String(idx), style: idx % 2 === 1 ? { ...styles.tableRow, ...styles.tableRowAlt } : styles.tableRow },
-          createElement(View, { style: styles.colPart },
-            createElement(Text, { style: styles.cellText }, p.partName || `Part ${idx + 1}`),
-          ),
-          createElement(View, { style: styles.colMat },
-            createElement(Text, { style: styles.cellText }, p.materialName || '—'),
-          ),
-          createElement(View, { style: styles.colQty },
-            createElement(Text, { style: styles.cellText }, String(p.qty || 1)),
-          ),
-          createElement(View, { style: styles.colPrice },
-            createElement(Text, { style: styles.priceText }, fmt(p.total || 0)),
-          ),
-        )
-      ),
-
-      // Total
-      createElement(View, { style: styles.totalSection },
-        createElement(Text, { style: styles.totalLabel }, labels.total),
-        createElement(Text, { style: styles.totalAmount }, fmt(data.grandTotal)),
-      ),
-
-      // Details
-      createElement(View, { style: styles.detailsRow },
-        data.leadTime ? createElement(View, { style: styles.detailItem },
-          createElement(Text, { style: styles.detailLabel }, labels.leadTime),
-          createElement(Text, { style: styles.detailValue }, data.leadTime),
-        ) : null,
-        data.contact ? createElement(View, { style: styles.detailItem },
-          createElement(Text, { style: styles.detailLabel }, labels.contact),
-          createElement(Text, { style: styles.detailValue }, data.contact),
-        ) : null,
-      ),
-
-      // Note
-      createElement(View, { style: styles.noteBox },
-        createElement(Text, { style: styles.noteText }, labels.note),
-      ),
-
-      // Footer
-      createElement(View, { style: styles.footer },
-        createElement(Text, { style: styles.footerText }, labels.footer),
-        createElement(Text, { style: styles.footerText }, `Doc: QF-${Date.now().toString(36).toUpperCase()}`),
-      ),
-    )
-  );
+function fmt(n: number) {
+  return '\u20AC' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export async function POST(request: Request) {
   try {
-    ensureFont();
     const data: PDFData = await request.json();
+    const isBg = data.lang === 'bg';
 
-    const buffer = await renderToBuffer(createElement(QuotePDF, { data }) as any);
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
+    // Register PT Sans with Cyrillic support
+    doc.addFileToVFS('PTSans-Regular.ttf', PTSANS_BASE64);
+    doc.addFont('PTSans-Regular.ttf', 'PTSans', 'normal');
+    doc.setFont('PTSans', 'normal');
+
+    const W = 210;
+    const marginX = 20;
+    const contentW = W - marginX * 2;
+
+    // Orange stripe
+    doc.setFillColor(255, 107, 26);
+    doc.rect(0, 0, W, 6, 'F');
+
+    // Dark header
+    doc.setFillColor(31, 36, 33);
+    doc.rect(0, 6, W, 28, 'F');
+
+    // Brand name
+    doc.setTextColor(255, 107, 26);
+    doc.setFontSize(18);
+    doc.text('QUOTEFORGE', marginX, 20);
+
+    doc.setTextColor(139, 144, 136);
+    doc.setFontSize(8);
+    doc.text('Bulgaria \u00B7 Manufacturing', marginX, 26);
+
+    // Doc title
+    doc.setTextColor(250, 248, 244);
+    doc.setFontSize(13);
+    const title = isBg ? 'OFERТА' : 'QUOTATION';
+    doc.text(title, W - marginX, 18, { align: 'right' });
+
+    doc.setTextColor(139, 144, 136);
+    doc.setFontSize(8);
+    doc.text(data.date, W - marginX, 25, { align: 'right' });
+
+    let y = 46;
+
+    // From / For
+    doc.setTextColor(90, 95, 90);
+    doc.setFontSize(8);
+    doc.text(isBg ? 'ОТ' : 'FROM', marginX, y);
+    if (data.clientName) {
+      doc.text(isBg ? 'ЗА' : 'FOR', W - marginX, y, { align: 'right' });
+    }
+
+    y += 5;
+    doc.setTextColor(31, 36, 33);
+    doc.setFontSize(12);
+    doc.text(data.company || (isBg ? 'Работилница' : 'Workshop'), marginX, y);
+    if (data.clientName) {
+      doc.text(data.clientName, W - marginX, y, { align: 'right' });
+    }
+
+    y += 5;
+    doc.setTextColor(90, 95, 90);
+    doc.setFontSize(8);
+    doc.text('Bulgaria \u00B7 Manufacturing', marginX, y);
+
+    y += 8;
+
+    // Divider
+    doc.setDrawColor(31, 36, 33);
+    doc.setLineWidth(0.6);
+    doc.line(marginX, y, W - marginX, y);
+    y += 8;
+
+    // Table header
+    doc.setFillColor(232, 230, 225);
+    doc.rect(marginX, y - 4, contentW, 8, 'F');
+
+    doc.setTextColor(90, 95, 90);
+    doc.setFontSize(8);
+    const colPart = marginX;
+    const colMat = marginX + contentW * 0.42;
+    const colQty = marginX + contentW * 0.68;
+    const colPrice = W - marginX;
+
+    doc.text(isBg ? 'ДЕTАЙЛ' : 'PART', colPart, y);
+    doc.text(isBg ? 'МАТЕРИАЛ' : 'MATERIAL', colMat, y);
+    doc.text(isBg ? 'БР.' : 'QTY', colQty, y);
+    doc.text(isBg ? 'ЦЕНА' : 'PRICE', colPrice, y, { align: 'right' });
+    y += 8;
+
+    // Parts
+    data.parts.forEach((p, idx) => {
+      if (idx % 2 === 1) {
+        doc.setFillColor(245, 244, 241);
+        doc.rect(marginX, y - 4, contentW, 8, 'F');
+      }
+
+      doc.setTextColor(31, 36, 33);
+      doc.setFontSize(9);
+      doc.text(p.partName || `Part ${idx + 1}`, colPart, y);
+      doc.text(p.materialName || '\u2014', colMat, y);
+      doc.text(String(p.qty || 1), colQty, y);
+
+      doc.setTextColor(201, 85, 26);
+      doc.text(fmt(p.total || 0), colPrice, y, { align: 'right' });
+      y += 8;
+    });
+
+    // Total line
+    y += 4;
+    doc.setDrawColor(31, 36, 33);
+    doc.setLineWidth(0.8);
+    doc.line(marginX, y, W - marginX, y);
+    y += 8;
+
+    doc.setTextColor(31, 36, 33);
+    doc.setFontSize(11);
+    doc.text(isBg ? 'ОБЩА ЦЕНА' : 'TOTAL PRICE', marginX, y);
+
+    doc.setTextColor(201, 85, 26);
+    doc.setFontSize(20);
+    doc.text(fmt(data.grandTotal), W - marginX, y, { align: 'right' });
+    y += 10;
+
+    // Details strip
+    if (data.leadTime || data.contact) {
+      doc.setFillColor(232, 230, 225);
+      doc.rect(marginX, y, contentW, 14, 'F');
+      y += 8;
+
+      doc.setFontSize(7.5);
+      let detX = marginX + 4;
+
+      if (data.leadTime) {
+        doc.setTextColor(90, 95, 90);
+        doc.text(isBg ? 'СРОК' : 'LEAD TIME', detX, y - 3);
+        doc.setTextColor(31, 36, 33);
+        doc.setFontSize(9);
+        doc.text(data.leadTime, detX, y + 2);
+        detX += contentW / 2;
+      }
+
+      if (data.contact) {
+        doc.setFontSize(7.5);
+        doc.setTextColor(90, 95, 90);
+        doc.text(isBg ? 'КОНТАКТ' : 'CONTACT', detX, y - 3);
+        doc.setTextColor(31, 36, 33);
+        doc.setFontSize(9);
+        doc.text(data.contact, detX, y + 2);
+      }
+      y += 14;
+    }
+
+    // Note
+    y += 4;
+    doc.setDrawColor(255, 107, 26);
+    doc.setLineWidth(1.5);
+    doc.line(marginX, y, marginX, y + 10);
+    doc.setTextColor(90, 95, 90);
+    doc.setFontSize(8);
+    const note = isBg
+      ? 'Ofertata e validna 30 dni. Potrebtvardete poratchkata pishmeno.'
+      : 'This quotation is valid for 30 days. Please confirm your order in writing.';
+    doc.text(note, marginX + 4, y + 6);
+
+    // Footer
+    doc.setDrawColor(199, 205, 212);
+    doc.setLineWidth(0.3);
+    doc.line(marginX, 277, W - marginX, 277);
+    doc.setTextColor(139, 144, 136);
+    doc.setFontSize(7.5);
+    const footerText = isBg
+      ? 'QUOTEFORGE \u2014 INSTRUMENT ZA PROIZVODSTVENI OFERTI'
+      : 'QUOTEFORGE \u2014 MANUFACTURING QUOTE TOOL';
+    doc.text(footerText, marginX, 282);
+    doc.text(`Doc: QF-${Date.now().toString(36).toUpperCase()}`, W - marginX, 282, { align: 'right' });
+
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
     const company = (data.company || 'quote').replace(/[^a-zA-Z0-9]/g, '_');
-    const filename = `quote_${company}_${data.lang}.pdf`;
 
-    return new NextResponse(new Uint8Array(buffer), {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `attachment; filename="quote_${company}_${data.lang}.pdf"`,
       },
     });
   } catch (error) {
     console.error('PDF generation error:', error);
-    return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
