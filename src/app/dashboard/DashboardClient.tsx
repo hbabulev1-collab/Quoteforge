@@ -34,6 +34,12 @@ const i18n = {
     clientName: 'Име на клиента', clientContact: 'Контакт', clientCountry: 'Държава',
     saveClient: 'Запази клиент', selectClient: 'Избери клиент',
     loading: 'Зареждане...',
+    isNewPart: 'Нов детайл?', newPartYes: 'Да, нов', newPartNo: 'Не, повторен',
+    camHours: 'CAM програмиране (ч)', setupHours: 'Настройка (ч)', setupRate: 'Ставка настройка (€/ч)',
+    toolWear: 'Износ на инструменти (%)',
+    breakdown: 'Разбивка на цената', matCostL: 'Материал', machCostL: 'Обработка',
+    setupCostL: 'Настройка + CAM', toolCostL: 'Инструменти', marginCostL: 'Марж',
+    engineeringNote: 'Настройка и CAM се броят само за нови детайли — при повторна поръчка се пропускат.',
   },
   en: {
     newQuote: 'New Quote', history: 'History', clients: 'Clients', logout: 'Log out',
@@ -51,6 +57,12 @@ const i18n = {
     clientName: 'Client name', clientContact: 'Contact', clientCountry: 'Country',
     saveClient: 'Save client', selectClient: 'Select client',
     loading: 'Loading...',
+    isNewPart: 'New part?', newPartYes: 'Yes, new', newPartNo: 'No, repeat',
+    camHours: 'CAM programming (h)', setupHours: 'Setup time (h)', setupRate: 'Setup rate (€/h)',
+    toolWear: 'Tool wear (%)',
+    breakdown: 'Price breakdown', matCostL: 'Material', machCostL: 'Machining',
+    setupCostL: 'Setup + CAM', toolCostL: 'Tooling', marginCostL: 'Margin',
+    engineeringNote: 'Setup and CAM only apply to new parts — skipped for repeat orders.',
   },
 };
 
@@ -71,6 +83,11 @@ interface Part {
   margin: number;
   partName: string;
   qty: string;
+  isNew: boolean;
+  camHours: string;
+  setupHours: string;
+  setupRate: string;
+  toolWear: number;
 }
 
 interface Client {
@@ -99,6 +116,7 @@ function emptyPart(): Part {
   return {
     id: uid(), materialId: 'steel', weight: '', matPrice: '0.90',
     machTime: '', rate: '35', margin: 25, partName: '', qty: '1',
+    isNew: true, camHours: '1', setupHours: '0.5', setupRate: '40', toolWear: 10,
   };
 }
 
@@ -120,6 +138,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'done'>('idle');
   const [newClientForm, setNewClientForm] = useState({ name: '', contact: '', country: '' });
   const [showNewClient, setShowNewClient] = useState(false);
+  const [expandedBreakdown, setExpandedBreakdown] = useState<string | null>(null);
 
   const router = useRouter();
   const t = i18n[lang];
@@ -159,7 +178,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     router.refresh();
   }
 
-  function updatePart(id: string, field: keyof Part, value: string | number) {
+  function updatePart(id: string, field: keyof Part, value: string | number | boolean) {
     setParts(prev => prev.map(p => {
       if (p.id !== id) return p;
       const updated = { ...p, [field]: value } as Part;
@@ -183,10 +202,30 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     const rate = parseFloat(p.rate) || 0;
     const margin = Number(p.margin) || 0;
     const qty = parseInt(p.qty) || 1;
+    const camHours = parseFloat(p.camHours) || 0;
+    const setupHours = parseFloat(p.setupHours) || 0;
+    const setupRate = parseFloat(p.setupRate) || 0;
+    const toolWearPct = Number(p.toolWear) || 0;
+
     const matCost = weight * matPrice;
     const machCost = machTime * rate;
-    const subtotal = (matCost + machCost) * qty;
-    return { matCost: matCost * qty, machCost: machCost * qty, total: subtotal * (1 + margin / 100) };
+    const toolCost = machCost * (toolWearPct / 100);
+
+    const engineeringCost = p.isNew ? (setupHours * setupRate + camHours * 60) : 0;
+    const engineeringCostPerUnit = engineeringCost / qty;
+
+    const perUnitCost = matCost + machCost + toolCost + engineeringCostPerUnit;
+    const subtotal = perUnitCost * qty;
+    const total = subtotal * (1 + margin / 100);
+
+    return {
+      matCost: matCost * qty,
+      machCost: machCost * qty,
+      toolCost: toolCost * qty,
+      engineeringCost,
+      marginAmount: total - subtotal,
+      total,
+    };
   }
 
   const partTotals = parts.map(calcPartCost);
@@ -234,7 +273,11 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     setClientId(quote.client_id || '');
     setLeadTime(quote.lead_time || '');
     setContact(quote.contact || '');
-    setParts(quote.parts.map(p => ({ ...p, id: uid() })));
+    setParts(quote.parts.map(p => ({
+      ...emptyPart(),
+      ...p,
+      id: uid(),
+    })));
     setView('new');
     setMobileTab('form');
   }
@@ -363,11 +406,41 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
         {parts.map((p, idx) => (
           <div key={p.id} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #EFEDE8' }}>
-            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>{p.partName || `${t.partName} ${idx + 1}`}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.soft, marginBottom: 2 }}>
-              <span>{getMaterialName(p.materialId)} · {t.qty}: {p.qty || '1'}</span>
-              <span style={{ fontFamily: 'monospace', color: C.sparkDim, fontWeight: 700 }}>{fmt(partTotals[idx].total)}</span>
+            <div
+              onClick={() => setExpandedBreakdown(expandedBreakdown === p.id ? null : p.id)}
+              style={{ cursor: 'pointer' }}
+            >
+              <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>
+                {p.partName || `${t.partName} ${idx + 1}`}
+                {p.isNew && <span style={{ color: C.spark, fontSize: 9, marginLeft: 6 }}>● {lang === 'bg' ? 'нов' : 'new'}</span>}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.soft, marginBottom: 2 }}>
+                <span>{getMaterialName(p.materialId)} · {t.qty}: {p.qty || '1'}</span>
+                <span style={{ fontFamily: 'monospace', color: C.sparkDim, fontWeight: 700 }}>{fmt(partTotals[idx].total)}</span>
+              </div>
             </div>
+            {expandedBreakdown === p.id && (
+              <div style={{ marginTop: 8, padding: 10, background: '#F5F4F1', fontSize: 10, fontFamily: 'monospace' }}>
+                <div style={{ fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t.breakdown}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ color: C.soft }}>{t.matCostL}</span><span>{fmt(partTotals[idx].matCost)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ color: C.soft }}>{t.machCostL}</span><span>{fmt(partTotals[idx].machCost)}</span>
+                </div>
+                {p.isNew && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <span style={{ color: C.soft }}>{t.setupCostL}</span><span>{fmt(partTotals[idx].engineeringCost)}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ color: C.soft }}>{t.toolCostL}</span><span>{fmt(partTotals[idx].toolCost)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: C.soft }}>{t.marginCostL}</span><span>{fmt(partTotals[idx].marginAmount)}</span>
+                </div>
+              </div>
+            )}
           </div>
         ))}
 
@@ -488,6 +561,51 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
               placeholder={t.machTime} style={inp} />
             <input type="number" value={p.rate} onChange={e => updatePart(p.id, 'rate', e.target.value)}
               placeholder={t.rate} style={inp} />
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#B8BDB6', marginBottom: 6 }}>
+              <span>{t.toolWear}</span>
+              <span style={{ color: C.spark, fontFamily: 'monospace' }}>{p.toolWear}%</span>
+            </div>
+            <input type="range" min="0" max="25" value={p.toolWear}
+              onChange={e => updatePart(p.id, 'toolWear', Number(e.target.value))} style={{ width: '100%' }} />
+          </div>
+
+          <div style={{ marginBottom: 10, padding: 10, background: '#1A1E1B', borderRadius: 2, border: `1px solid ${p.isNew ? C.spark + '55' : '#3C433D'}` }}>
+            <div style={{ fontSize: 11, color: '#B8BDB6', marginBottom: 8 }}>{t.isNewPart}</div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: p.isNew ? 10 : 0 }}>
+              <button onClick={() => updatePart(p.id, 'isNew', true)} style={{
+                flex: 1, padding: '8px', fontSize: 11, border: 'none', borderRadius: 2, cursor: 'pointer',
+                fontFamily: 'monospace', background: p.isNew ? C.spark : '#2A302C',
+                color: p.isNew ? C.graphite : '#8B9088', fontWeight: p.isNew ? 700 : 400,
+              }}>{t.newPartYes}</button>
+              <button onClick={() => updatePart(p.id, 'isNew', false)} style={{
+                flex: 1, padding: '8px', fontSize: 11, border: 'none', borderRadius: 2, cursor: 'pointer',
+                fontFamily: 'monospace', background: !p.isNew ? C.ok : '#2A302C',
+                color: !p.isNew ? C.paper : '#8B9088', fontWeight: !p.isNew ? 700 : 400,
+              }}>{t.newPartNo}</button>
+            </div>
+
+            {p.isNew && (
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 10, color: '#8B9088', marginBottom: 4 }}>{t.camHours}</label>
+                    <input type="number" step="0.1" value={p.camHours} onChange={e => updatePart(p.id, 'camHours', e.target.value)} style={inp} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 10, color: '#8B9088', marginBottom: 4 }}>{t.setupHours}</label>
+                    <input type="number" step="0.1" value={p.setupHours} onChange={e => updatePart(p.id, 'setupHours', e.target.value)} style={inp} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, color: '#8B9088', marginBottom: 4 }}>{t.setupRate}</label>
+                  <input type="number" value={p.setupRate} onChange={e => updatePart(p.id, 'setupRate', e.target.value)} style={inp} />
+                </div>
+                <div style={{ fontSize: 9.5, color: '#6B716A', marginTop: 8, fontStyle: 'italic' }}>{t.engineeringNote}</div>
+              </div>
+            )}
           </div>
 
           <div>
