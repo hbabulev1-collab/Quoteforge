@@ -389,7 +389,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     );
   }
 
-  const QuotePreview = () => (
+  const quotePreviewEl = (
     <div style={{ background: C.paper, padding: isMobile ? '16px' : '32px 28px', minHeight: isMobile ? 'auto' : 500 }}>
       <div style={{ background: 'white', border: `1px solid #D6D2C8`, padding: isMobile ? '20px 16px' : '28px 24px', boxShadow: '0 4px 24px rgba(31,36,33,0.08)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `2px solid ${C.graphite}`, paddingBottom: 12, marginBottom: 14 }}>
@@ -484,7 +484,7 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
     </div>
   );
 
-  const FormPanel = () => (
+  const formPanelEl = (
     <div style={{ background: C.graphite, color: C.paper, padding: isMobile ? '20px 16px' : '32px 28px' }}>
       <div style={{ fontSize: 10, letterSpacing: '0.1em', color: C.spark, marginBottom: 14, fontFamily: 'monospace' }}>
         01 — {lang === 'bg' ? 'ОФЕРТА' : 'QUOTE'}
@@ -724,11 +724,11 @@ export default function DashboardClient({ userEmail }: { userEmail: string }) {
 
         {view === 'new' && (
           isMobile ? (
-            mobileTab === 'form' ? <FormPanel /> : <QuotePreview />
+            mobileTab === 'form' ? formPanelEl : quotePreviewEl
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 0, alignItems: 'start' }}>
-              <FormPanel />
-              <QuotePreview />
+              {formPanelEl}
+              {quotePreviewEl}
             </div>
           )
         )}
