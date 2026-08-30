@@ -6,7 +6,6 @@ export async function middleware(request: NextRequest) {
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // If env variables are missing, allow the request through
-  // (the page itself will handle the error gracefully)
   if (!supabaseUrl || !supabaseKey) {
     return NextResponse.next({ request });
   }
@@ -28,8 +27,17 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Refresh session if expired - required for Server Components
-  await supabase.auth.getUser();
+  // Race the auth check against a timeout so a slow/down Supabase
+  // never hangs the whole site. If it times out, we let the request
+  // through — the page itself will handle showing a login prompt
+  // if the session turns out to be invalid.
+  const timeout = new Promise((resolve) => setTimeout(() => resolve('timeout'), 4000));
+
+  try {
+    await Promise.race([supabase.auth.getUser(), timeout]);
+  } catch {
+    // Ignore errors from the auth check itself — never block the request on this.
+  }
 
   return supabaseResponse;
 }
